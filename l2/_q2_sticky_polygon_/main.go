@@ -1,46 +1,92 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
-	"os"
 )
 
-func solve(arr []int) int {
-	var sum int
-	for _, elt := range arr {
-		sum += elt
-	}
-	tg := sum / 2
+/*create a subsetSum array*/
+/*do bs over all possible answer*/
+/*check if each possible answer is achieveable*/
 
-	dp := make([]bool, tg+1)
-	dp[0] = true
-	for _, elt := range arr {
-		for i := tg; i >= elt; i-- {
-			dp[i] = dp[i] || dp[i-elt]
+var subsetSum []int
+var memo map[int]bool
+
+func canPart(mask int, k int, limit int) bool {
+	if mask == 0 {
+		return true
+	}
+	if k == 0 {
+		return false
+	}
+
+	key := mask<<4 | k // because k<2^4
+	if val, exists := memo[key]; exists {
+		return val
+	}
+
+	for sub := mask; sub > 0; sub = (sub - 1) & mask {
+		if subsetSum[sub] <= limit {
+			if canPart(mask^sub, k-1, limit) {
+				memo[key] = true
+				return true
+			}
 		}
 	}
 
-	for i := tg; i >= 0; i-- {
-		if dp[i] {
-			return (sum - 2*i) + 1
+	memo[key] = false
+	return false
+}
+
+func minimumTimeRequired(jobs []int, k int) int {
+	n := len(jobs)
+	totalMasks := 1 << n
+	subsetSum = make([]int, totalMasks)
+
+	for mask := 0; mask < totalMasks; mask++ {
+		sum := 0
+		for i := 0; i < n; i++ {
+			if mask&(1<<i) != 0 {
+				sum += jobs[i]
+			}
+		}
+		subsetSum[mask] = sum
+	}
+
+	/*binary search*/
+	low := 0
+	for i := 0; i < n; i++ {
+		if jobs[i] > low {
+			low = jobs[i]
 		}
 	}
-	return -1
+	high := 0
+	for i := 0; i < n; i++ {
+		high += jobs[i]
+	}
+
+	for low < high {
+		mid := (low + high) / 2
+		memo = make(map[int]bool)
+
+		if canPart(totalMasks-1, k, mid) {
+			high = mid
+		} else {
+			low = mid + 1
+		}
+	}
+
+	return low
 }
 
 func main() {
-	in := bufio.NewReader(os.Stdin)
+	var n, k int
+	fmt.Scan(&n, &k)
 
-	var t int
-	fmt.Fscan(in, &t)
-	var arr []int
-
-	for ; t > 0; t-- {
-		var x int
-		fmt.Fscan(in, &x)
-		arr = append(arr, x)
+	jobs := make([]int, n)
+	for i := 0; i < n; i++ {
+		fmt.Scan(&jobs[i])
 	}
 
-	fmt.Println(solve(arr))
+	result := minimumTimeRequired(jobs, k)
+	fmt.Println(result)
 }
